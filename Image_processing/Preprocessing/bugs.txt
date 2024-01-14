@@ -1,0 +1,21 @@
+Kartoffel_Trieb 150 - 177 werden katastrophal ausgeschnitten
+
+Auswertung mask range
+Hue fest: 23 - 33
+Bilder: Kartoffel_Trieb 35 - 40
+sat: 130 - 255: Erkennt den Trieb nicht aber Rest von Kartoffel_Trieb
+val: 100 - 255: Erkennt fast alles. Ein paar Schatten Punkte werden nicht erkannt
+-------
+sat: 80 - 130: Erkennt andere Pixel als HUE. Meist weniger. Trieb wird auch erkannt
+val 50 - 100: Wird so gut wie alles herausgefiltert -> Zu niedrig
+-------
+sat: 40 - 80: Erkennt nochmal weniger Nicht Trieb
+val: 100 - 150: Immer noch zu niedring
+------
+sat: 0 - 40: Nur Hintergrund wird erkannt. Alles Was Kartoffel ist wird nicht erkannt. Ziemlich perfekte segmentierung
+
+sat: 60 - 150 größer 150 erkennt sehr viel
+            - kleiner 60 erkennt fast nichts mehr
+
+sat 100 - 159 : 100 zu hoch
+
