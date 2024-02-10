@@ -7,3 +7,6 @@ def encoding_labels(df, col_name, values):
     df.loc[df[col_name] == 'Zwiebel_Trieb', col_name] = values[5]  #5
     
     return df
+
+def do():
+    print("say hello")
