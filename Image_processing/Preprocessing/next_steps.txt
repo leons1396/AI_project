@@ -1,0 +1,27 @@
+Prüfe ob jeder Eckpunkt innerhalb Bild liegt
+    - Fall 1: Gilt für alle Eckpunkte außerhalb und 3 Eckpunkte außerhalb
+        Bisher: Den Fall implementiert, wenn jeder Eckpunkt außerhalb ist -> die box wird komplett neu gezeichnet anhand geometrischer Gleichungen
+     Implementiere Fall 2: Nur ein Eckpunkt außerhalb
+     Implementiere Fall 3: Nur zwei Eckpunkte außerhalb (ich glaube diagonale Eckpunkte können nicht beide außerhalb sein. -> Nur direkt verbundene ->
+         einfach parallel verschieben)
+
+    - 
+
+
+Crop gerade gedrehtes Rechteck aus Bild
+    Mit der Implementierten rotationsmatrix kann ich jeden einzelnen Eckpunkt transformieren
+    Mit der gleichen Rotationsmatrix auch das Bild drehen
+    Transformierten Punkte abgleichen, damit horizontal und vertikal. range(-2, +2) Dann ist ok und setze p0_x = p1_x, das gleiche für die restlichen
+    Transformierte und abgelichene Eckpunkte in gedrehtes Bild einzeichen -> Box malen -> crop
+
+
+Symmetrie ermitteln im Bild
+    - Symmetrieachse in Längsachse einzeichen in der Mitte der Box
+    - linke Seite wird gespiegelt
+    https://stackoverflow.com/questions/7589012/combining-two-images-with-opencv
+    - gespiegelte Bild mit gedrehten Ursprungsbild vergleichen
+    - Zählen der Pixel die sich unterscheiden ins Verhältnis zu Allen setzen ???
+    - Um die Gleichheit der Pixel festzustellen, muss man evtl. auch in einer range prüfen +-5 oder so ???
+
+
+Generelle Prüfung - Ist die gewählte Rotation dann für sämtliche boxen gültig -> visuell ??

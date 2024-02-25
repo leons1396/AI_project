@@ -1,0 +1,3 @@
+https://realpython.com/python-opencv-color-spaces/
+Applying the median filter https://theailearner.com/tag/cv2-medianblur/
+compute dynamically thresholds: https://stackoverflow.com/questions/24862374/canny-edge-detector-threshold-values-gives-different-result
