@@ -216,6 +216,45 @@ def crop_roi(img_bgr, box):
 
 
 ######################### REDRAW BOUNDING BOX #########################
+def resize_bound_box_and_draw(img, rect, box):
+    # figure out the correct case. Find the points which are outside the image
+    outside_count = 0
+    outside_count = sum(1 for arr in box if (arr < 0).any() or (arr > 255).any())
+
+    print("Outside count: ", outside_count)
+
+
+    # Calculate the directions of the vectors, once
+    u_0_1 = box[1] - box[0]
+    u_0_3 = box[3] - box[0]
+    #print(f"Vector u_0_1: {u_0_1} | Vector u_0_3: {u_0_3}")
+
+    if outside_count == 1:
+        new_box = case_one_point_outside(box, u_0_1)
+        rotated_points = rotate_edge_points(new_box, rect[2])
+        rotated_img = rotate_img(img, rect[2])
+        aligned_points = align_edge_points(rotated_points)
+        vegi_with_new_box_rgb = draw_rotated_box(rotated_img, aligned_points)
+        
+    elif outside_count == 2:
+        new_box = case_2_points_outside(box, u_0_1, u_0_3)
+        rotated_points = rotate_edge_points(new_box, rect[2])
+        rotated_img = rotate_img(img, rect[2])
+        aligned_points = align_edge_points(rotated_points)
+        vegi_with_new_box_rgb = draw_rotated_box(rotated_img, aligned_points)
+
+    elif outside_count >= 3:
+        # Assumption: Area of bounding box is probably similar to the area of the img. Just draw a new box with edge points in the middle of each side of the img
+        # TODO Important: but keep the orignal angle from the box. rect[2]
+        h = img.shape[0]
+        new_box = np.array([[0, h // 2], [h // 2, 0],  [255, h // 2], [h // 2, 255]])
+
+        # because of the distinct rotation angle, rotate new_box and img separately
+        rotated_points = rotate_edge_points(new_box, 45)
+        rotated_img = rotate_img(img, rect[2])
+        aligned_points = align_edge_points(rotated_points)
+        vegi_with_new_box_rgb = draw_rotated_box(rotated_img, aligned_points)
+    return vegi_with_new_box_rgb, aligned_points
 
 def case_one_point_outside(box, u_0_1):
     # Assumption: It shouldn't matter in which direction to img borders you move the outside point
@@ -356,3 +395,51 @@ def parallel_shift_neighbour_point(orig_point, u_shifted_point):
     orig_point_x, orig_point_y = orig_point
     u_x, u_y = u_shifted_point
     return (orig_point_x + u_x, orig_point_y + u_y)
+
+
+def rotate_edge_points(box, angle, center_x=128, center_y=128):
+    M = cv2.getRotationMatrix2D((center_x, center_y), angle, 1)
+
+    edge_points = [(point[0], point[1], 1) for point in box]
+    rotated_points = []
+    for point in edge_points:
+        rotated_pixel = np.dot(M, point).astype(int)
+        rotated_points.append((rotated_pixel[0], rotated_pixel[1]))
+    return rotated_points
+
+
+def rotate_img(img, angle, center_x=128, center_y=128):
+    M = cv2.getRotationMatrix2D((center_x, center_y), angle, 1)
+    return cv2.warpAffine(img, M, (img.shape[1], img.shape[0]))
+
+
+def draw_rotated_box(img, edge_points, color=(255, 0, 255)):
+    img_copy = img.copy()
+    for i in range(len(edge_points)):
+        cv2.line(img_copy, edge_points[i], edge_points[(i+1)%4], color, 1)
+    return img_copy
+
+
+def align_edge_points(edge_points):
+    # because of rounding errors the edge points are not perfectly horizontal or vertical aligned
+    # I want to align them because later I can easily crop the bounding box
+    # first index lower left and then clockwise
+    # check if the points are nearly aligned
+    print(edge_points)
+    # TODO: What to do if there are not in range ???
+    tol = 3
+    assert edge_points[0][0] in range(edge_points[1][0]-tol, edge_points[1][0]+tol)
+    assert edge_points[0][1] in range(edge_points[3][1]-tol, edge_points[3][1]+tol)
+    assert edge_points[1][1] in range(edge_points[2][1]-tol, edge_points[2][1]+tol)
+    assert edge_points[2][0] in range(edge_points[3][0]-tol, edge_points[3][0]+tol)
+
+    #Diagonal points
+    align_x_p0 = edge_points[0][0]
+    align_y_p0 = edge_points[0][1]
+    align_x_p2 = edge_points[2][0]
+    align_y_p2 = edge_points[2][1]
+    p0 = edge_points[0][0], edge_points[0][1]
+    p1 = align_x_p0, align_y_p2
+    p2 = edge_points[2][0], edge_points[2][1]
+    p3 = align_x_p2, align_y_p0
+    return [p0, p1, p2, p3]

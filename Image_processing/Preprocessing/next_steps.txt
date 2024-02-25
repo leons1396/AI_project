@@ -1,3 +1,17 @@
+25.02.2024
+
+Testen von bounding box resize Funktion
+    - X Bilder durlaufen lassen und das neue rotierte Bild abspeichern. 
+    - In einem Bild beide Bounding box darstellen
+
+Überlegen wie das Symmetriefeature umgesetzt werden kann
+    - Vergleich der Pixel mit .all() die in einer range (+-10) liegen ??? 
+    - Schwierigkeit wird sein den Pixelbereich festzulegen, weil die color Werte wieder stark voneinander abweichen werden 
+    - evtl. Konvertieren Schwarz - Grau ? Bzw. Schwarz - Weiß
+
+
+
+older...
 Prüfe ob jeder Eckpunkt innerhalb Bild liegt
     - Fall 1: Gilt für alle Eckpunkte außerhalb und 3 Eckpunkte außerhalb
         Bisher: Den Fall implementiert, wenn jeder Eckpunkt außerhalb ist -> die box wird komplett neu gezeichnet anhand geometrischer Gleichungen
@@ -25,3 +39,7 @@ Symmetrie ermitteln im Bild
 
 
 Generelle Prüfung - Ist die gewählte Rotation dann für sämtliche boxen gültig -> visuell ??
+
+
+
+
