@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import cv2
 
+#TODO create a config file or something like that for the global variables. For example the image size - it is const
 
 def show_image_plt(img_rgb):
     plt.imshow(img_rgb)
@@ -41,13 +42,14 @@ def resize_to_square(vegi_bgr):
     return resized_img
 
 
-def draw_contours(bgr_img, object_area):
+def get_obj_contour(bgr_img, object_area):
+    # TODO refactor this function. split it
     hsv = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2HSV)
     _, saturation, _ = cv2.split(hsv)
 
     blurred_sat = cv2.GaussianBlur(saturation, (3, 3), 0)
 
-    # Compute the thresh dynamically from the mean() value. 
+    # Compute the threshold dynamically
     thresh = blurred_sat.mean()
     std = blurred_sat.std()
     thresh_low = thresh - std
@@ -63,8 +65,15 @@ def draw_contours(bgr_img, object_area):
     erode = cv2.erode(dilate, kernel, iterations=4)
 
     contours, _ = cv2.findContours(erode, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
-    
+    contours_len = sorted(contours, key=cv2.contourArea, reverse=True)[0]
+    print("sorted contours", len(contours_len))
+    print(contours_len)
+    print(type(contours_len))
+    contours_len_2 = sorted(contours, key=cv2.contourArea, reverse=True)[:1]
+    print("sorted contours up to 5", len(contours_len_2))
+    print(contours_len_2)
+    print(type(contours_len_2))
+    return
     bgr_img_copy = bgr_img.copy()
     # Flag makes sure that there is a maximum of 1 box in each image. Assumption, the bounding box for the vegi is always the biggest
     more_than_one_box = False
@@ -251,34 +260,38 @@ def recalculate_bounding_box(box):
         # the if cases are necessary because of the boundary conditions (left, top, down, right)
         # check if x cooridnate is left from the image
         if box[point_at_idx][0] < 0:
-            box = recalculate_edge_from_box(box=box, idxs=(point_at_idx, next_idx, prev_idx),
-                                                v_to_neighbour_points=(v_next_point, v_prev_point),
-                                                neighbour_points=(p_next, p_prev), 
-                                                boundary=(0, None))
+            box = recalculate_edge_from_box(box=box, 
+                                            idxs=(point_at_idx, next_idx, prev_idx),
+                                            v_to_neighbour_points=(v_next_point, v_prev_point),
+                                            neighbour_points=(p_next, p_prev), 
+                                            boundary=(0, None))
             
         # check if y coordinate of point is above the image
         elif box[point_at_idx][1] < 0:
             # set y to 0 and calculate new x
-            box = recalculate_edge_from_box(box=box, idxs=(point_at_idx, next_idx, prev_idx),
-                                                v_to_neighbour_points=(v_next_point, v_prev_point),
-                                                neighbour_points=(p_next, p_prev), 
-                                                boundary=(None, 0))
+            box = recalculate_edge_from_box(box=box, 
+                                            idxs=(point_at_idx, next_idx, prev_idx),
+                                            v_to_neighbour_points=(v_next_point, v_prev_point),
+                                            neighbour_points=(p_next, p_prev), 
+                                            boundary=(None, 0))
             
         # check if x coordinate is right from the image
         elif box[point_at_idx][0] > 255:
             # set x to 255 and calculate new y
-            box = recalculate_edge_from_box(box=box, idxs=(point_at_idx, next_idx, prev_idx),
-                                                v_to_neighbour_points=(v_next_point, v_prev_point),
-                                                neighbour_points=(p_next, p_prev), 
-                                                boundary=(255, None))
+            box = recalculate_edge_from_box(box=box, 
+                                            idxs=(point_at_idx, next_idx, prev_idx),
+                                            v_to_neighbour_points=(v_next_point, v_prev_point),
+                                            neighbour_points=(p_next, p_prev), 
+                                            boundary=(255, None))
             
         # check if y coordinate of point is below the image
         elif box[point_at_idx][1] > 255:
             # set y to 255 and calculate new x
-            box = recalculate_edge_from_box(box=box, idxs=(point_at_idx, next_idx, prev_idx),
-                                                v_to_neighbour_points=(v_next_point, v_prev_point),
-                                                neighbour_points=(p_next, p_prev), 
-                                                boundary=(None, 255))
+            box = recalculate_edge_from_box(box=box, 
+                                            idxs=(point_at_idx, next_idx, prev_idx),
+                                            v_to_neighbour_points=(v_next_point, v_prev_point),
+                                            neighbour_points=(p_next, p_prev), 
+                                            boundary=(None, 255))
         point_at_idx += 1
         debug_counter += 1
         if debug_counter == 10:
@@ -288,6 +301,9 @@ def recalculate_bounding_box(box):
 
 def recalculate_edge_from_box(box, idxs, v_to_neighbour_points, neighbour_points, boundary):
     """
+    Recalculate the edge between an outside point and one of its neighbour points. It takes the edge which the
+    shorter length from the point outside of the image to the image boundary if you move it by the vector to its
+    neighbour points
     :param box: The bounding box which contains the edge points
     :type box: 2D np.array
     :param idxs: Indexes are in following order: 0: current idx, 1: next idx, 2: prev idx
@@ -310,34 +326,33 @@ def recalculate_edge_from_box(box, idxs, v_to_neighbour_points, neighbour_points
     p_next, p_prev = neighbour_points[0], neighbour_points[1]
 
     # set x to 0 and calculate new y
-    temp_p_x_from_vec_next, temp_p_y_from_vec_next = move_point_along_vector(cur_point, 
-                                                                        v_next_point, 
-                                                                        boundary)
-    temp_p_x_from_vec_prev, temp_p_y_from_vec_prev = move_point_along_vector(cur_point, 
-                                                                        v_prev_point, 
-                                                                        boundary)
+    temp_p_from_vec_next = move_point_to_img_boundary(cur_point, 
+                                                   v_next_point,
+                                                   boundary)
+                                             
+    temp_p_from_vec_prev = move_point_to_img_boundary(cur_point, 
+                                                    v_prev_point, 
+                                                    boundary)
     # calculate the length from p_old to p_new for prev and next vector
-    l_v_next, v_p_old_to_p_new_next = calculate_length_of_moving_vectors(cur_point,
-                                                                                temp_p_x_from_vec_next,
-                                                                                temp_p_y_from_vec_next)
-    l_v_prev, v_p_old_to_p_new_prev = calculate_length_of_moving_vectors(cur_point,
-                                                                                temp_p_x_from_vec_prev,
-                                                                                temp_p_y_from_vec_prev)
+    l_v_next, v_p_old_to_p_new_next = calc_length(cur_point, temp_p_from_vec_next)
+                                                                                
+    l_v_prev, v_p_old_to_p_new_prev = calc_length(cur_point, temp_p_from_vec_prev)
     
     # move p_old along the shorter vector - finally get p_new
     if l_v_next < l_v_prev:
-        new_p_x, new_p_y = temp_p_x_from_vec_next, temp_p_y_from_vec_next
+        new_p_x, new_p_y = temp_p_from_vec_next
         moved_along_vector_next = True
     else:
-        new_p_x, new_p_y = temp_p_x_from_vec_prev, temp_p_y_from_vec_prev
+        new_p_x, new_p_y = temp_p_from_vec_prev
         moved_along_vector_prev = True
         
     # check wich point to move parallel and reasign the moved point
-    # if moving along vector_prev then move the point_at_next_index
+    # to keep the rectangular shape of the box always move one of the neighbour points, too
     # if moving along vector_next then move the point_at_prev_index
     if moved_along_vector_next:
         new_p_prev_x, new_p_prev_y = parallel_shift_neighbour_point(p_prev, v_p_old_to_p_new_next)
         box[prev_idx] = (new_p_prev_x, new_p_prev_y)
+    # if moving along vector_prev then move the point_at_next_index
     elif moved_along_vector_prev:
         new_p_next_x, new_p_next_y = parallel_shift_neighbour_point(p_next, v_p_old_to_p_new_prev)
         box[next_idx] = (new_p_next_x, new_p_next_y)
@@ -345,7 +360,118 @@ def recalculate_edge_from_box(box, idxs, v_to_neighbour_points, neighbour_points
     box[cur_idx] = (new_p_x, new_p_y)
     return box
 
-def clip_aligned_points(aligned_points):
+def move_point_to_img_boundary(point, vector, img_boundary):
+    """
+    Depending on the point position (left, above, right, below) the image move it in direction to the
+    image boundary
+    :param point: The point outside
+    :type point: tuple of int
+    :param vector: The vector between the point and its neighboring point
+    :type vector: tuple of int
+    :param img_boundary: The image size
+    :type img_boundary: tuple of int
+    :return: New calculated point on the image boundary
+    :type: tuple of int
+    """
+    point_x, point_y = point
+    vector_x, vector_y = vector
+    bound_x, bound_y = img_boundary
+    if bound_x == 0 or bound_x == 255:
+        # set x coordinate to the boundary values and calculate new y coordinate
+        # formular: p_new = p_old + eps * vector_x
+        eps = (bound_x + (point_x * (-1))) / vector_x
+        p_y_new = int(point_y + eps * vector_y)
+        p_x_new = bound_x
+    elif bound_y == 0 or bound_y == 255:
+        # set y coordinate to the boundary values and calculate new x coordinate
+        eps = (bound_y + (point_y * (-1))) / vector_y
+        p_x_new = int(point_x + eps * vector_x)
+        p_y_new = bound_y
+    return p_x_new, p_y_new
+
+def calc_length(orig_point, shifted_point):
+    orig_point_x, orig_point_y = orig_point
+    shifted_point_x, shifted_point_y = shifted_point
+    v = shifted_point_x - orig_point_x, shifted_point_y - orig_point_y
+    return np.linalg.norm(v), v
+
+def parallel_shift_neighbour_point(orig_point, v_shifted_point):
+    """
+    Moves a point exactly along the length of the passed vector
+    :param orig_point: The original point which should be moved
+    :type orig_point: tuple of int
+    :param v_shifted_point: The vector by which the original point should be moved
+    :type v_shifted_point: tuple of int
+    return: The original point moved by the vector
+    :type: tuple of int
+    """
+    orig_point_x, orig_point_y = orig_point
+    v_x, v_y = v_shifted_point
+    return (orig_point_x + v_x, orig_point_y + v_y)
+
+def rotate_edge_points(box, angle, center_x=128, center_y=128):
+    """
+    Rotate the recalculated edge points of the bounding box by the given angle from cv2.minAreaRect()
+    :param box: The recalculated bounding box with new edge points
+    :type box: 2D np.array
+    :param angle: The angle in degrees by which the bounding box was rotated
+    :type angle: float
+    :return: The rotated edge points of the bounding box
+    """
+    M = cv2.getRotationMatrix2D((center_x, center_y), angle, 1)
+
+    edge_points = [(point[0], point[1], 1) for point in box]
+    rotated_points = []
+    for point in edge_points:
+        # rotate each point individually
+        rotated_pixel = np.dot(M, point).astype(int)
+        rotated_points.append((rotated_pixel[0], rotated_pixel[1]))
+    return rotated_points
+
+def rotate_img(img, angle, center_x=128, center_y=128):
+    """
+    Rotate the image by the given angle from cv2.minAreaRect()
+    :param angle: The angle in degrees by which the bounding box was rotated
+    :type angle: float
+    :return: The rotated image
+    """
+    M = cv2.getRotationMatrix2D((center_x, center_y), angle, 1)
+    return cv2.warpAffine(img, M, (img.shape[1], img.shape[0]))
+
+def align_edge_points(edge_points):
+    """
+    Align the edge points so that they are perfectly horizontal or vertical
+    :param edge_points: The rotated edge points of the bounding box
+    :type edge_points: list of tuples
+    return: horizontal and vertical aligned edge points
+    :type: list of tuples
+    """
+    # because of rounding errors the edge points are not perfectly horizontal or vertical aligned
+    # I want to align them because then I can easily crop the bounding box later
+    # first index lower left and then clockwise
+    
+    # TODO: What to do if there are not in range ???
+    tol = 3
+    # just check if the points are nearly horizontal and vertical aligned
+    assert edge_points[0][0] in range(edge_points[1][0]-tol, edge_points[1][0]+tol), "P0 and P1 are not aligned"
+    assert edge_points[0][1] in range(edge_points[3][1]-tol, edge_points[3][1]+tol), "P0 and P3 are not aligned"
+    assert edge_points[1][1] in range(edge_points[2][1]-tol, edge_points[2][1]+tol), "P1 and P2 are not aligned"
+    assert edge_points[2][0] in range(edge_points[3][0]-tol, edge_points[3][0]+tol), "P2 and P3 are not aligned"
+
+    # diagonal points
+    align_x_p0 = edge_points[0][0]
+    align_y_p0 = edge_points[0][1]
+    align_x_p2 = edge_points[2][0]
+    align_y_p2 = edge_points[2][1]
+    
+    # p0 and p2 are fix. p1 and p3 are aligned to p0 and p2
+    p0 = edge_points[0][0], edge_points[0][1]
+    p1 = align_x_p0, align_y_p2
+    p2 = edge_points[2][0], edge_points[2][1]
+    p3 = align_x_p2, align_y_p0
+    return [p0, p1, p2, p3]
+
+def clip_aligned_points(coor):
     """
     It is possible that some edge points are still outside the image boundaries, if yes
     just clip the points to the image boundaries
@@ -354,248 +480,10 @@ def clip_aligned_points(aligned_points):
     :return: The aligned edge points of the bounding box clipped to the image boundaries
     :type: list of tuples
     """
-    return [(clip_coordiante(x), clip_coordiante(y)) for x, y in aligned_points]
+    return max(0, min(coor, 255))
 
-def clip_coordiante(coor):
-    if coor < 0:
-        return 0
-    elif coor > 255:
-        return 255
-    else:
-        return coor
-
-def resize_bound_box_and_draw(img, rect, box):
-    # figure out the correct case. Find the points which are outside the image
-    outside_count = 0
-    outside_count = sum(1 for arr in box if (arr < 0).any() or (arr > 255).any())
-    vegi_with_new_box_rgb = None
-    #print("Outside count: ", outside_count)
-
-    # Calculate the directions of the vectors, once
-    u_0_1 = box[1] - box[0]
-    u_0_3 = box[3] - box[0]
-    #print(f"Vector u_0_1: {u_0_1} | Vector u_0_3: {u_0_3}")
-    
-    if outside_count == 0:
-        aligned_points = box.copy()
-
-    elif outside_count == 1:
-        new_box = case_one_point_outside(box, u_0_1)
-        rotated_points = rotate_edge_points(new_box, rect[2])
-        rotated_img = rotate_img(img, rect[2])
-        aligned_points = align_edge_points(rotated_points)
-        vegi_with_new_box_rgb = draw_rotated_box(rotated_img, aligned_points)
-
-    elif outside_count == 2:
-        new_box = case_2_points_outside(box, u_0_1, u_0_3)
-        rotated_points = rotate_edge_points(new_box, rect[2])
-        rotated_img = rotate_img(img, rect[2])
-        aligned_points = align_edge_points(rotated_points)
-        vegi_with_new_box_rgb = draw_rotated_box(rotated_img, aligned_points)
-
-    elif outside_count >= 3:
-        # Assumption: Area of bounding box is probably similar to the area of the img. Just draw a new box with edge points in the middle of each side of the img
-        # TODO Important: but keep the orignal angle from the box. rect[2]
-        h = img.shape[0]
-        new_box = np.array([[0, h // 2], [h // 2, 0],  [255, h // 2], [h // 2, 255]])
-
-        # because of the distinct rotation angle, rotate new_box and img separately
-        rotated_points = rotate_edge_points(new_box, 45)
-        rotated_img = rotate_img(img, rect[2])
-        aligned_points = align_edge_points(rotated_points)
-        vegi_with_new_box_rgb = draw_rotated_box(rotated_img, aligned_points)
-    return vegi_with_new_box_rgb, aligned_points
-
-def case_one_point_outside(box, u_0_1):
-    # Assumption: It shouldn't matter in which direction to img borders you move the outside point
-    # because the distance for both direction should be small. Is it a big distance then probably another point is outside too.
-    # Always shift the outside point along u_0_1 vector
-    # case 1 - should be roughly similiar like case 2. Pass the correct borders
-    #print("This is case 1")
-    p0, p1, p2, p3 = box[0], box[1], box[2], box[3]
-    # get the point which is outside and his index in the box array
-    p_idx = [i for i, arr in enumerate(box) if (arr < 0).any() or (arr > 255).any()][0]
-    #print("point_idx: ", p_idx)
-    
-    # p0 is outside
-    if p_idx == 0:
-        #p0_x_new, p0_y_new, p1_x_new, p1_y_new = calculate_new_points(p0, p1, u_0_3, (0, None), (None, 0))
-        #p0_x_u01, p0_y_u01 = move_point_along_vector(p0, u_0_1, (0, None))
-        #p0_x_u03, p0_y_u03 = move_point_along_vector(p0, u_0_3, (0, None))
-        
-        #l_01, u_p0_u01 = calculate_length_of_moving_vectors(p0, p0_x_u01, p0_y_u01)
-        #l_03, u_p0_u03 = calculate_length_of_moving_vectors(p0, p0_x_u03, p0_y_u03) 
-
-        p0_x_new, p0_y_new, p3_x_new, p3_y_new = calculate_new_points_case1(p0, p3, u_0_1, (0, None))
-        new_box = np.array([[p0_x_new, p0_y_new], [p1[0], p1[1]], [p2[0], p2[1]], [p3_x_new, p3_y_new]])
-        """
-        if l_01 < l_03:
-            # set p3 to new position
-            # move p3 by u_0_1 vector
-            p3_x_u01, p3_y_u01 = parallel_shift_neighbour_point(p3, u_p0_u01)
-        
-        elif l_03 <= l_01:
-            # Set p1 to the new position
-            # move p1 by u_0_3 vector
-            p1_x_u03, p1_y_u03 = parallel_shift_neighbour_point(p1, u_p0_u03)
-            new_box = np.array([[p0_x_u03, p0_y_u03], [p1_x_u03, p1_y_u03], [p2[0], p2[1]], [p3[0], p3[1]]])
-        """
-    # p1 is outside
-    elif p_idx == 1:
-        p1_x_new, p1_y_new, p2_x_new, p2_y_new = calculate_new_points_case1(p1, p2, u_0_1*(-1), (None, 0))
-        new_box = np.array([[p0[0], p0[1]], [p1_x_new, p1_y_new], [p2_x_new, p2_y_new], [p3[0], p3[1]]])
-    # p2 is outside
-    elif p_idx == 2:
-        p2_x_new, p2_y_new, p1_x_new, p1_y_new = calculate_new_points_case1(p2, p1, u_0_1*(-1), (255, None))
-        new_box = np.array([[p0[0], p0[1]], [p1_x_new, p1_y_new], [p2_x_new, p2_y_new], [p3[0], p3[1]]])
-    # p3 is outside
-    elif p_idx == 3:
-        p3_x_new, p3_y_new, p0_x_new, p0_y_new = calculate_new_points_case1(p3, p0, u_0_1, (None, 255))
-        new_box = np.array([[p0_x_new, p0_y_new], [p1[0], p1[1]], [p2[0], p2[1]], [p3_x_new, p3_y_new]])
-    return new_box
-
-
-def case_2_points_outside(box, u_0_1, u_0_3):
-    #print("This is case 2")
-    p0, p1, p2, p3 = box[0], box[1], box[2], box[3]
-    # 2 neighboured points are outside
-    # get the points which are outside and their index in the box array
-    p_idx_1, p_idx_2 = [i for i, arr in enumerate(box) if (arr < 0).any() or (arr > 255).any()]
-    #print("point_idx_1: ", p_idx_1, "point_idx_2: ", p_idx_2)
-
-    # p0 and p1 are outside
-    if p_idx_1 == 0 and p_idx_2 == 1:
-        p0_x_new, p0_y_new, p1_x_new, p1_y_new = calculate_new_points_case2(p0, p1, u_0_3, (0, None), (None, 0))
-        new_box = np.array([[p0_x_new, p0_y_new], [p1_x_new, p1_y_new], [p2[0], p2[1]], [p3[0], p3[1]]])
-        return new_box
-    
-    # p1 and p2 are outside
-    elif p_idx_1 == 1 and p_idx_2 == 2:
-        p1_x_new, p1_y_new, p2_x_new, p2_y_new = calculate_new_points_case2(p1, p2, u_0_1*-1, (None, 0), (255, None))
-        new_box = np.array([[p0[0], p0[1]], [p1_x_new, p1_y_new], [p2_x_new, p2_y_new], [p3[0], p3[1]]])
-        return new_box
-
-    # p2 and p3 are outside
-    elif p_idx_1 == 2 and p_idx_2 == 3:
-        p2_x_new, p2_y_new, p3_x_new, p3_y_new = calculate_new_points_case2(p2, p3, u_0_3*-1, (255, None), (None, 255))
-        new_box = np.array([[p0[0], p0[1]], [p1[0], p1[1]], [p2_x_new, p2_y_new], [p3_x_new, p3_y_new]])
-        return new_box
-    
-    # p0 and p3 are outside
-    elif p_idx_1 == 0 and p_idx_2 == 3:
-        p0_x_new, p0_y_new, p3_x_new, p3_y_new = calculate_new_points_case2(p0, p3, u_0_1, (0, None), (None, 255))
-        new_box = np.array([[p0_x_new, p0_y_new], [p1[0], p1[1]],  [p2[0], p2[1]], [p3_x_new, p3_y_new]])
-        return new_box
-    
-    # p0 and p2 are outside
-    elif p_idx_1 == 0 and p_idx_2 == 2:
-        # move both sides p0-p1 and p2-p3 in direction to the middle of the img
-        p0_x_new, p0_y_new, p2_x_new, p2_y_new = calculate_new_points_case2(p0, p2, u_0_3, (0, None), (255, None))
-        new_box = np.array([[p0_x_new, p0_y_new], [p1[0], p1[1]], [p2[0], p2[1]], [p3_x_new, p3_y_new]])
-        return new_box
-    # p1 and p3 are outside
-    # move both sides p0-p1 and p2-p3 in direction to the middle of the img
-
-
-def calculate_new_points_case1(p, neighbour_p, u_0_1, border):
-    # np = neighbour point
-    p_x_u01, p_y_u01 = move_point_along_vector(p, u_0_1, border)
-    _, u_p_u01 = calculate_length_of_moving_vectors(p, p_x_u01, p_y_u01) # Only need vector original point to shifted orig point
-    np_x_u01, np_y_u01 = parallel_shift_neighbour_point(neighbour_p, u_p_u01)
-    return p_x_u01, p_y_u01, np_x_u01, np_y_u01
-
-
-def calculate_new_points_case2(p0, p1, u, border1, border2):
-        p0_x_new, p0_y_new = move_point_along_vector(p0, u, border1)
-        p1_x_new, p1_y_new = move_point_along_vector(p1, u, border2)
-
-        l_0, u_p0_p0_new = calculate_length_of_moving_vectors(p0, p0_x_new, p0_y_new)
-        l_1, u_p1_p1_new = calculate_length_of_moving_vectors(p1, p1_x_new, p1_y_new)
-        #print(f"Length l_0= {l_0} and l_1= {l_1}")
-
-        if l_0 < l_1:
-            # Set p1 to the new position
-            # move p0 by p1_new vector
-            p0_x_new, p0_y_new = parallel_shift_neighbour_point(p0, u_p1_p1_new)
-        elif l_0 >= l_1:
-            # Set p0 to the new position
-            # move p1 by p0_new vector
-            p1_x_new, p1_y_new = parallel_shift_neighbour_point(p1, u_p0_p0_new)
-        return p0_x_new, p0_y_new, p1_x_new, p1_y_new
-
-
-def move_point_along_vector(point, vector, img_border):
-    border_x, border_y = img_border
-    point_x, point_y = point
-    vector_x, vector_y = vector
-
-    if border_x == 0 or border_x == 255:
-        eps = (border_x + (point_x * (-1))) / vector_x
-        p_y_new = int(point_y + eps * vector_y)
-        p_x_new = border_x
-    elif border_y == 0 or border_y == 255:
-        eps = (border_y + (point_y * (-1))) / vector_y
-        p_x_new = int(point_x + eps * vector_x)
-        p_y_new = border_y
-    return p_x_new, p_y_new
-
-
-def calculate_length_of_moving_vectors(orig_point, shifted_point_x, shifted_point_y):
-    orig_point_x, orig_point_y = orig_point
-    u = shifted_point_x - orig_point_x, shifted_point_y - orig_point_y
-    return np.linalg.norm(u), u
-
-
-def parallel_shift_neighbour_point(orig_point, u_shifted_point):
-    orig_point_x, orig_point_y = orig_point
-    u_x, u_y = u_shifted_point
-    return (orig_point_x + u_x, orig_point_y + u_y)
-
-
-def rotate_edge_points(box, angle, center_x=128, center_y=128):
-    M = cv2.getRotationMatrix2D((center_x, center_y), angle, 1)
-
-    edge_points = [(point[0], point[1], 1) for point in box]
-    rotated_points = []
-    for point in edge_points:
-        rotated_pixel = np.dot(M, point).astype(int)
-        rotated_points.append((rotated_pixel[0], rotated_pixel[1]))
-    return rotated_points
-
-
-def rotate_img(img, angle, center_x=128, center_y=128):
-    M = cv2.getRotationMatrix2D((center_x, center_y), angle, 1)
-    return cv2.warpAffine(img, M, (img.shape[1], img.shape[0]))
-
-
-def draw_rotated_box(img, edge_points, color=(255, 0, 255)):
+def draw_rotated_box(img, edge_points):
     img_copy = img.copy()
     for i in range(len(edge_points)):
-        cv2.line(img_copy, edge_points[i], edge_points[(i+1)%4], color, 1)
+        cv2.line(img_copy, edge_points[i], edge_points[(i+1)%4], (255, 0, 255), 1)
     return img_copy
-
-
-def align_edge_points(edge_points):
-    # because of rounding errors the edge points are not perfectly horizontal or vertical aligned
-    # I want to align them because later I can easily crop the bounding box
-    # first index lower left and then clockwise
-    # check if the points are nearly aligned
-    
-    # TODO: What to do if there are not in range ???
-    tol = 3
-    assert edge_points[0][0] in range(edge_points[1][0]-tol, edge_points[1][0]+tol), "P0 and P1 are not aligned"
-    assert edge_points[0][1] in range(edge_points[3][1]-tol, edge_points[3][1]+tol), "P0 and P3 are not aligned"
-    assert edge_points[1][1] in range(edge_points[2][1]-tol, edge_points[2][1]+tol), "P1 and P2 are not aligned"
-    assert edge_points[2][0] in range(edge_points[3][0]-tol, edge_points[3][0]+tol), "P2 and P3 are not aligned"
-
-    #Diagonal points
-    align_x_p0 = edge_points[0][0]
-    align_y_p0 = edge_points[0][1]
-    align_x_p2 = edge_points[2][0]
-    align_y_p2 = edge_points[2][1]
-    
-    p0 = edge_points[0][0], edge_points[0][1]
-    p1 = align_x_p0, align_y_p2
-    p2 = edge_points[2][0], edge_points[2][1]
-    p3 = align_x_p2, align_y_p0
-    return [p0, p1, p2, p3]
