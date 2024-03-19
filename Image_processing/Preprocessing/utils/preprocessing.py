@@ -42,8 +42,7 @@ def resize_to_square(vegi_bgr):
     return resized_img
 
 
-def get_obj_contour(bgr_img, object_area):
-    # TODO refactor this function. split it
+def get_obj_contour(bgr_img):
     hsv = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2HSV)
     _, saturation, _ = cv2.split(hsv)
 
@@ -54,10 +53,7 @@ def get_obj_contour(bgr_img, object_area):
     std = blurred_sat.std()
     thresh_low = thresh - std
     thresh_high = thresh + std
-    # The factors were simply selected by testing the algoritm. Another approach could be to calculate the mean with the standard deviation
-    #thresh_low = 0.3 * thresh 
-    #thresh_high = 2 * thresh
-    
+
     # The next four lines control how good the bounding box will fit
     edges = cv2.Canny(blurred_sat, thresh_low, thresh_high)
     kernel = np.ones((4, 4), np.uint8) # creates 4x4 Identity matrix
@@ -65,39 +61,17 @@ def get_obj_contour(bgr_img, object_area):
     erode = cv2.erode(dilate, kernel, iterations=4)
 
     contours, _ = cv2.findContours(erode, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours_len = sorted(contours, key=cv2.contourArea, reverse=True)[0]
-    print("sorted contours", len(contours_len))
-    print(contours_len)
-    print(type(contours_len))
-    contours_len_2 = sorted(contours, key=cv2.contourArea, reverse=True)[:1]
-    print("sorted contours up to 5", len(contours_len_2))
-    print(contours_len_2)
-    print(type(contours_len_2))
-    return
-    bgr_img_copy = bgr_img.copy()
-    # Flag makes sure that there is a maximum of 1 box in each image. Assumption, the bounding box for the vegi is always the biggest
-    more_than_one_box = False
-    for i, contour in enumerate(contours):
-        area = cv2.contourArea(contour)
-        if area >= object_area:
-            rect = cv2.minAreaRect(contour)
-            box = cv2.boxPoints(rect)
-            box = np.intp(box)
-            cv2.drawContours(bgr_img_copy, [box], 0, (0, 255, 0), 2)
-            
-            # Calculate Circularity
-            perimeter = cv2.arcLength(contour, True)
-            r_circle = perimeter / (2 * np.pi)
-            A_circle = r_circle**2 * np.pi
-            circularity = area / A_circle
-            
-            if i > 0:
-                # There are more than 2 boxes in the image
-                more_than_one_box = True
-    
-    rgb = cv2.cvtColor(bgr_img_copy, cv2.COLOR_BGR2RGB)
-    return rgb, more_than_one_box, box, rect, area, circularity
+    # get only the biggest contour, asume that the biggest contour is the vegi
+    return sorted(contours, key=cv2.contourArea, reverse=True)[0]
 
+def get_circularity(contour):
+    area = cv2.contourArea(contour)
+    # Calculate Circularity
+    perimeter = cv2.arcLength(contour, True)
+    r_circle = perimeter / (2 * np.pi)
+    A_circle = r_circle**2 * np.pi
+    circularity = area / A_circle
+    return circularity
 
 def get_size_box(box):
     x0 = box[0][0]
