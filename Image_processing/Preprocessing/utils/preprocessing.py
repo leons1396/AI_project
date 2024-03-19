@@ -89,7 +89,6 @@ def get_size_box(box):
     h = max(l0_1, l1_2)
     return h, w
 
-
 def is_box_rotated(box):
     # If the box is not rotated then the top left corner should be the first element in box array
     x0, y0 = box[0][0], box[0][1]
@@ -102,7 +101,6 @@ def is_box_rotated(box):
     # BOX IS ROTATED
     return True
 
-
 def get_color(rgb_segment):
     cropped_vegi_2D = rgb_segment.reshape((-1,3))
     # convert to np.float32
@@ -110,16 +108,10 @@ def get_color(rgb_segment):
 
     # define criteria and apply kmeans()
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1)
-    ret, label, center = cv2.kmeans(cropped_vegi_2D, 2, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+    _, _, center = cv2.kmeans(cropped_vegi_2D, 2, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
 
-    center = np.uint8(center)
-   
-    res = center[label.flatten()]
-    res2 = res.reshape((rgb_segment.shape))
-    
     #returns center in rgb format
-    return center, ret, label
-
+    return np.uint8(center)
 
 def mask_green(cropped_vegi_seg_rgb, lower_thresh=(30, 175, 25), higher_thresh=(100, 255, 255)):
     ## Convert to HSV
@@ -134,7 +126,6 @@ def mask_green(cropped_vegi_seg_rgb, lower_thresh=(30, 175, 25), higher_thresh=(
     green_rgb = np.zeros_like(cropped_vegi_seg_rgb, np.uint8)
     green_rgb[imask] = cropped_vegi_seg_rgb[imask]
     return green_rgb, imask
-
 
     #Image as BGR
 def segment_img_2(cropped_vegi_bgr):
