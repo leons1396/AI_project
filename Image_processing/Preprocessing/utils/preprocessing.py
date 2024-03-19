@@ -216,26 +216,176 @@ def crop_roi(img_bgr, box):
 
 
 ######################### REDRAW BOUNDING BOX #########################
+def recalculate_bounding_box(box):
+    """
+    If there are any edge points outside the image boundaries, then recalculate these edge points.
+    Depending on which points have been recalculated, the neighboring points are also moved in parallel
+    :param box: The bounding box which contains the edge points
+    :type box: 2D np.array
+    :return box: The recalculated bounding box with new edge points within the image boundaries
+    """
+    point_at_idx = 0
+    debug_counter = 0
+    while (box < 0).any() or (box > 255).any():
+        # if the case exists that 4 iterations are not enough to get a box within the image boundaries
+        if point_at_idx == 4:
+            point_at_idx = 0 
+        
+        # get the vectors of the next and previous points in the box
+        if point_at_idx < 3:
+            next_idx = point_at_idx + 1
+            prev_idx = point_at_idx - 1
+            v_next_point = box[next_idx] - box[point_at_idx]
+            v_prev_point = box[prev_idx] - box[point_at_idx]
+            p_next = box[next_idx]
+            p_prev = box[prev_idx]
+        else:
+            # extra case for point_at_idx = 3, to prevent of out of index error
+            next_idx = 0
+            prev_idx = 2
+            v_next_point = box[next_idx] - box[point_at_idx]
+            v_prev_point = box[prev_idx] - box[point_at_idx]
+            p_next = box[next_idx]
+            p_prev = box[prev_idx]
+
+        # the if cases are necessary because of the boundary conditions (left, top, down, right)
+        # check if x cooridnate is left from the image
+        if box[point_at_idx][0] < 0:
+            box = recalculate_edge_from_box(box=box, idxs=(point_at_idx, next_idx, prev_idx),
+                                                v_to_neighbour_points=(v_next_point, v_prev_point),
+                                                neighbour_points=(p_next, p_prev), 
+                                                boundary=(0, None))
+            
+        # check if y coordinate of point is above the image
+        elif box[point_at_idx][1] < 0:
+            # set y to 0 and calculate new x
+            box = recalculate_edge_from_box(box=box, idxs=(point_at_idx, next_idx, prev_idx),
+                                                v_to_neighbour_points=(v_next_point, v_prev_point),
+                                                neighbour_points=(p_next, p_prev), 
+                                                boundary=(None, 0))
+            
+        # check if x coordinate is right from the image
+        elif box[point_at_idx][0] > 255:
+            # set x to 255 and calculate new y
+            box = recalculate_edge_from_box(box=box, idxs=(point_at_idx, next_idx, prev_idx),
+                                                v_to_neighbour_points=(v_next_point, v_prev_point),
+                                                neighbour_points=(p_next, p_prev), 
+                                                boundary=(255, None))
+            
+        # check if y coordinate of point is below the image
+        elif box[point_at_idx][1] > 255:
+            # set y to 255 and calculate new x
+            box = recalculate_edge_from_box(box=box, idxs=(point_at_idx, next_idx, prev_idx),
+                                                v_to_neighbour_points=(v_next_point, v_prev_point),
+                                                neighbour_points=(p_next, p_prev), 
+                                                boundary=(None, 255))
+        point_at_idx += 1
+        debug_counter += 1
+        if debug_counter == 10:
+            print("Hit debug counter")
+            break
+    return box
+
+def recalculate_edge_from_box(box, idxs, v_to_neighbour_points, neighbour_points, boundary):
+    """
+    :param box: The bounding box which contains the edge points
+    :type box: 2D np.array
+    :param idxs: Indexes are in following order: 0: current idx, 1: next idx, 2: prev idx
+    :type idxs: tuple of int
+    :param v_to_neighbour_points: The vectors from current point to the next and prev point from the box
+                                  Index 0: Vector to next point. Index 1: Vector to prev point
+    :type v_to_neighbour_points: tuple of 1D np.arrays
+    :param neighbour_points: The next and prev point from the box. Index 0: Next point. Index 1: Prev point
+    :type neighbour_points: tuple of 1D np.arrays
+    :param boundary: The img boundary to which the points are shifted
+    :type boundary: tuple of int
+    :return: The box with two recalculated edge points
+    :type: 2D np.array
+    """
+    moved_along_vector_next = False
+    moved_along_vector_prev = False
+    cur_idx, next_idx, prev_idx = idxs[0], idxs[1], idxs[2]
+    cur_point = box[cur_idx]
+    v_next_point, v_prev_point = v_to_neighbour_points[0], v_to_neighbour_points[1]
+    p_next, p_prev = neighbour_points[0], neighbour_points[1]
+
+    # set x to 0 and calculate new y
+    temp_p_x_from_vec_next, temp_p_y_from_vec_next = move_point_along_vector(cur_point, 
+                                                                        v_next_point, 
+                                                                        boundary)
+    temp_p_x_from_vec_prev, temp_p_y_from_vec_prev = move_point_along_vector(cur_point, 
+                                                                        v_prev_point, 
+                                                                        boundary)
+    # calculate the length from p_old to p_new for prev and next vector
+    l_v_next, v_p_old_to_p_new_next = calculate_length_of_moving_vectors(cur_point,
+                                                                                temp_p_x_from_vec_next,
+                                                                                temp_p_y_from_vec_next)
+    l_v_prev, v_p_old_to_p_new_prev = calculate_length_of_moving_vectors(cur_point,
+                                                                                temp_p_x_from_vec_prev,
+                                                                                temp_p_y_from_vec_prev)
+    
+    # move p_old along the shorter vector - finally get p_new
+    if l_v_next < l_v_prev:
+        new_p_x, new_p_y = temp_p_x_from_vec_next, temp_p_y_from_vec_next
+        moved_along_vector_next = True
+    else:
+        new_p_x, new_p_y = temp_p_x_from_vec_prev, temp_p_y_from_vec_prev
+        moved_along_vector_prev = True
+        
+    # check wich point to move parallel and reasign the moved point
+    # if moving along vector_prev then move the point_at_next_index
+    # if moving along vector_next then move the point_at_prev_index
+    if moved_along_vector_next:
+        new_p_prev_x, new_p_prev_y = parallel_shift_neighbour_point(p_prev, v_p_old_to_p_new_next)
+        box[prev_idx] = (new_p_prev_x, new_p_prev_y)
+    elif moved_along_vector_prev:
+        new_p_next_x, new_p_next_y = parallel_shift_neighbour_point(p_next, v_p_old_to_p_new_prev)
+        box[next_idx] = (new_p_next_x, new_p_next_y)
+    
+    box[cur_idx] = (new_p_x, new_p_y)
+    return box
+
+def clip_aligned_points(aligned_points):
+    """
+    It is possible that some edge points are still outside the image boundaries, if yes
+    just clip the points to the image boundaries
+    :param aligned_points: The aligned edge points of the bounding box
+    :type aligned_points: list of tuples
+    :return: The aligned edge points of the bounding box clipped to the image boundaries
+    :type: list of tuples
+    """
+    return [(clip_coordiante(x), clip_coordiante(y)) for x, y in aligned_points]
+
+def clip_coordiante(coor):
+    if coor < 0:
+        return 0
+    elif coor > 255:
+        return 255
+    else:
+        return coor
+
 def resize_bound_box_and_draw(img, rect, box):
     # figure out the correct case. Find the points which are outside the image
     outside_count = 0
     outside_count = sum(1 for arr in box if (arr < 0).any() or (arr > 255).any())
-
-    print("Outside count: ", outside_count)
-
+    vegi_with_new_box_rgb = None
+    #print("Outside count: ", outside_count)
 
     # Calculate the directions of the vectors, once
     u_0_1 = box[1] - box[0]
     u_0_3 = box[3] - box[0]
     #print(f"Vector u_0_1: {u_0_1} | Vector u_0_3: {u_0_3}")
+    
+    if outside_count == 0:
+        aligned_points = box.copy()
 
-    if outside_count == 1:
+    elif outside_count == 1:
         new_box = case_one_point_outside(box, u_0_1)
         rotated_points = rotate_edge_points(new_box, rect[2])
         rotated_img = rotate_img(img, rect[2])
         aligned_points = align_edge_points(rotated_points)
         vegi_with_new_box_rgb = draw_rotated_box(rotated_img, aligned_points)
-        
+
     elif outside_count == 2:
         new_box = case_2_points_outside(box, u_0_1, u_0_3)
         rotated_points = rotate_edge_points(new_box, rect[2])
@@ -261,11 +411,11 @@ def case_one_point_outside(box, u_0_1):
     # because the distance for both direction should be small. Is it a big distance then probably another point is outside too.
     # Always shift the outside point along u_0_1 vector
     # case 1 - should be roughly similiar like case 2. Pass the correct borders
-    print("This is case 1")
+    #print("This is case 1")
     p0, p1, p2, p3 = box[0], box[1], box[2], box[3]
     # get the point which is outside and his index in the box array
     p_idx = [i for i, arr in enumerate(box) if (arr < 0).any() or (arr > 255).any()][0]
-    print("point_idx: ", p_idx)
+    #print("point_idx: ", p_idx)
     
     # p0 is outside
     if p_idx == 0:
@@ -306,12 +456,12 @@ def case_one_point_outside(box, u_0_1):
 
 
 def case_2_points_outside(box, u_0_1, u_0_3):
-    print("This is case 2")
+    #print("This is case 2")
     p0, p1, p2, p3 = box[0], box[1], box[2], box[3]
     # 2 neighboured points are outside
     # get the points which are outside and their index in the box array
     p_idx_1, p_idx_2 = [i for i, arr in enumerate(box) if (arr < 0).any() or (arr > 255).any()]
-    print("point_idx_1: ", p_idx_1, "point_idx_2: ", p_idx_2)
+    #print("point_idx_1: ", p_idx_1, "point_idx_2: ", p_idx_2)
 
     # p0 and p1 are outside
     if p_idx_1 == 0 and p_idx_2 == 1:
@@ -336,6 +486,15 @@ def case_2_points_outside(box, u_0_1, u_0_3):
         p0_x_new, p0_y_new, p3_x_new, p3_y_new = calculate_new_points_case2(p0, p3, u_0_1, (0, None), (None, 255))
         new_box = np.array([[p0_x_new, p0_y_new], [p1[0], p1[1]],  [p2[0], p2[1]], [p3_x_new, p3_y_new]])
         return new_box
+    
+    # p0 and p2 are outside
+    elif p_idx_1 == 0 and p_idx_2 == 2:
+        # move both sides p0-p1 and p2-p3 in direction to the middle of the img
+        p0_x_new, p0_y_new, p2_x_new, p2_y_new = calculate_new_points_case2(p0, p2, u_0_3, (0, None), (255, None))
+        new_box = np.array([[p0_x_new, p0_y_new], [p1[0], p1[1]], [p2[0], p2[1]], [p3_x_new, p3_y_new]])
+        return new_box
+    # p1 and p3 are outside
+    # move both sides p0-p1 and p2-p3 in direction to the middle of the img
 
 
 def calculate_new_points_case1(p, neighbour_p, u_0_1, border):
@@ -352,7 +511,7 @@ def calculate_new_points_case2(p0, p1, u, border1, border2):
 
         l_0, u_p0_p0_new = calculate_length_of_moving_vectors(p0, p0_x_new, p0_y_new)
         l_1, u_p1_p1_new = calculate_length_of_moving_vectors(p1, p1_x_new, p1_y_new)
-        print(f"Length l_0= {l_0} and l_1= {l_1}")
+        #print(f"Length l_0= {l_0} and l_1= {l_1}")
 
         if l_0 < l_1:
             # Set p1 to the new position
@@ -372,16 +531,12 @@ def move_point_along_vector(point, vector, img_border):
 
     if border_x == 0 or border_x == 255:
         eps = (border_x + (point_x * (-1))) / vector_x
-        print("eps: ", eps)
-        print("vector x: ", vector_x)
-        print("vector y: ", vector_y)
         p_y_new = int(point_y + eps * vector_y)
         p_x_new = border_x
     elif border_y == 0 or border_y == 255:
         eps = (border_y + (point_y * (-1))) / vector_y
         p_x_new = int(point_x + eps * vector_x)
         p_y_new = border_y
-    print(f"New Point x= {p_x_new} y= {p_y_new}")
     return p_x_new, p_y_new
 
 
@@ -425,19 +580,20 @@ def align_edge_points(edge_points):
     # I want to align them because later I can easily crop the bounding box
     # first index lower left and then clockwise
     # check if the points are nearly aligned
-    print(edge_points)
+    
     # TODO: What to do if there are not in range ???
     tol = 3
-    assert edge_points[0][0] in range(edge_points[1][0]-tol, edge_points[1][0]+tol)
-    assert edge_points[0][1] in range(edge_points[3][1]-tol, edge_points[3][1]+tol)
-    assert edge_points[1][1] in range(edge_points[2][1]-tol, edge_points[2][1]+tol)
-    assert edge_points[2][0] in range(edge_points[3][0]-tol, edge_points[3][0]+tol)
+    assert edge_points[0][0] in range(edge_points[1][0]-tol, edge_points[1][0]+tol), "P0 and P1 are not aligned"
+    assert edge_points[0][1] in range(edge_points[3][1]-tol, edge_points[3][1]+tol), "P0 and P3 are not aligned"
+    assert edge_points[1][1] in range(edge_points[2][1]-tol, edge_points[2][1]+tol), "P1 and P2 are not aligned"
+    assert edge_points[2][0] in range(edge_points[3][0]-tol, edge_points[3][0]+tol), "P2 and P3 are not aligned"
 
     #Diagonal points
     align_x_p0 = edge_points[0][0]
     align_y_p0 = edge_points[0][1]
     align_x_p2 = edge_points[2][0]
     align_y_p2 = edge_points[2][1]
+    
     p0 = edge_points[0][0], edge_points[0][1]
     p1 = align_x_p0, align_y_p2
     p2 = edge_points[2][0], edge_points[2][1]
