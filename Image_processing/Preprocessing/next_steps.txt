@@ -1,10 +1,52 @@
+22.03.2024
+TODO fine tune segment_img method. segment_img_3 funktioniert aktuell am besten. Paramter try and errorr...
+
+Final betrachtet, Das verhältnis der overlapping fläche muss ich zu der gespiegelten
+    seite nehmen. Also zähle, wie viele Pixel sind gleich von gespiegelt zu orig rechte Hälfte 
+    und dann setze ins Verhältnis Wie viel von Gesamten gespiegelten Pixel kommen wirklich
+    in der origanlen rechten Hälfte vor 
+    -> wenn ich die orig betrachte habe ich das Problem, das der segment_img algo Fehler einbaut
+    und schwarze Flächen innerhalb des Gemüses setzt. -> Zählen von Orig Hälfte Pixel hat unterumständen
+    viel mehr Punkte weil dort der algo keinen Fehler gemacht hat, wenn die Fehler nur auf linke Seite
+    von Kartoffel auftreten: Vergleich: KI_Projekt/Bilder/Kartoffel/kartoffel_65.jpg'
+
+21.03.2024
+-  Wie bestimmte ich genau das Symmetriemaß ?
+    - Die Differenz aus beiden Bildern nehmen funktioniert nicht so richtig. Problem ist die unterschiedliche Größe der Bilder -> hintergrund verfälscht das ergebnis
+    - das problem ist dass ich über die Farbe die Symmetrie bestimme. aber eigentlich muss ich ja die Form anschauen
+        - aber die Form zu bekommen ist schwierig weil sowohl als Canny als auch die binary segmentier methode etwas buggy sind- (wegen unterschiede in Fotoqualität)
+    - berechne ich nur die Differenz der Farbpixel - baue ich Fehler ein. Es gibt z.b. schwarze punkte auf der Kartoffel, diese würden dann nicht erkannt werden obwohl es mit sym nichts zu tun hat
+
+
+19.03.2024
+-  crop neu berechnete bounding box von img_with_new_box
+    - zeichne / bestimme symmetrieachse. Hor oder ver ?
+    - Spiegele eine Hälfte
+    - übereinanderlegen von orignaler hälfter / gespiegelter hälfte und dem ausgeschnittenen bounding box fläche von img_with_new_bo
+    - feststellen der Ähnlichlichkeit der pixel von übereinandergelegten Bilder
+    - Debugging Methode: meand and std von beiden Hälften des ausgeschnittenen Bildes vergleichen
+    Erwartung: wenn symmetrisch dann ähnliche mean und std
+
+04.03.2024
+- Der aktuelle Ansatz wie die Boxen neu berechnet werden ist zu buggy. Es ist schwierig jeden Fall abzudecken
+        der auftreten kann. Außerdem weiß ich nicht welche Bounding Boxen alles entstehen können.
+        Bug war: Es können auch zwei Punkte außerhalb liegen, welche Diagonal zueinander stehen
+        - Besserer Ansatz wäre es unabhängig davon machen welcher, und wieviele Punkte außerhalb sind
+        - while point is outlier DO:
+            - setze Punkt auf img Grenze
+            - Merke welche Punkte versetzt worden sind und abhängig davon wird der nächste Punkt versetzt
+            - Die box sollte im gleichen Verhältnis geändert werden
+
+- Vllt ist es besser, die Vektoren u_0_1 und u_0_3 immer neu zu brechnen. Immer abhängig von der box was
+        auf index 0 steht
 25.02.2024
 
-Testen von bounding box resize Funktion
+- Testen von bounding box resize Funktion
     - X Bilder durlaufen lassen und das neue rotierte Bild abspeichern. 
     - In einem Bild beide Bounding box darstellen
 
-Überlegen wie das Symmetriefeature umgesetzt werden kann
+TODO: Überlegen wie das Symmetriefeature umgesetzt werden kann
+    - wie lege ich die Symmetrieachse ? horizontal oder vertikal
     - Vergleich der Pixel mit .all() die in einer range (+-10) liegen ??? 
     - Schwierigkeit wird sein den Pixelbereich festzulegen, weil die color Werte wieder stark voneinander abweichen werden 
     - evtl. Konvertieren Schwarz - Grau ? Bzw. Schwarz - Weiß

@@ -6,8 +6,11 @@ import cv2
 
 #TODO create a config file or something like that for the global variables. For example the image size - it is const
 
-def show_image_plt(img_rgb):
-    plt.imshow(img_rgb)
+def show_image_plt(img_rgb, cmap=None):
+    if cmap == 'gray':
+        plt.imshow(img_rgb, cmap=cmap)
+    else:
+        plt.imshow(img_rgb)
     plt.show()
 
 
@@ -108,9 +111,8 @@ def get_color(rgb_segment):
 
     # define criteria and apply kmeans()
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1)
-    _, _, center = cv2.kmeans(cropped_vegi_2D, 2, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-
     #returns center in rgb format
+    _, _, center = cv2.kmeans(cropped_vegi_2D, 2, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
     return np.uint8(center)
 
 def mask_green(cropped_vegi_seg_rgb, lower_thresh=(30, 175, 25), higher_thresh=(100, 255, 255)):
@@ -135,6 +137,18 @@ def segment_img_2(cropped_vegi_bgr):
     _, thresh = cv2.threshold(gray, 0, 255,cv2.THRESH_BINARY_INV +cv2.THRESH_OTSU)
     return thresh
 
+def segment_img_3(cropped_vegi_bgr):
+    gray = cv2.cvtColor(cropped_vegi_bgr, cv2.COLOR_BGR2GRAY)
+     # Apply Gaussian blur to reduce noise and smooth the image
+    #blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+
+    # Apply adaptive thresholding to obtain a binary image
+    thresh = cv2.adaptiveThreshold(gray, 255, 
+                                   cv2.ADAPTIVE_THRESH_MEAN_C, 
+                                   cv2.THRESH_BINARY_INV, 
+                                   81, 
+                                   6)
+    return thresh
 
 def color_from_segmented_binary(seg_bin, cropped_vegi_bgr):
     imask = seg_bin>0 #False / True array
@@ -452,3 +466,56 @@ def draw_rotated_box(img, edge_points):
     for i in range(len(edge_points)):
         cv2.line(img_copy, edge_points[i], edge_points[(i+1)%4], (255, 0, 255), 1)
     return img_copy
+
+def calc_symmetry(img, aligned_box, reflection_axis):
+    """
+    Calculate the symmetry feature of the vegi by taking the ratio of the overlap area of original 
+    and reflected image to the area of the original image
+    :param img: The image of the vegi
+    :type img: np.array
+    :param aligned_box: The aligned rotated box with the aligned edge points
+    :type aligned_box: 2D np.array
+    :param reflection_axis: Axis on which the image is reflected ["vertical", "horizontal"]
+    :type reflection_axis: str
+    :return: The symmetry meassure of an vegi
+    :type: float
+    """
+    # convert img to binary img
+    img_bin = segment_img_3(img)
+    # prevent manipulating the original box
+    aligned_box_copy = aligned_box.copy()
+    v_line = int(np.linalg.norm(aligned_box_copy[1] - aligned_box_copy[0]))
+    h_line = int(np.linalg.norm(aligned_box_copy[3] - aligned_box_copy[0]))
+    # width and height should be a even number because later it's easier to calculate
+    # if the length of the lines are odd values then remove one pixel row and/or column
+    if v_line % 2 != 0:
+        v_line -= 1
+        aligned_box_copy[1][1] += 1
+        aligned_box_copy[2][1] += 1
+    if h_line % 2 != 0:
+        h_line -= 1
+        aligned_box_copy[2][0] -= 1
+        aligned_box_copy[3][0] -= 1
+
+    if reflection_axis == "vertical":
+        # array rows corresponds to img height
+        left_half = img_bin[aligned_box_copy[1][1]:aligned_box_copy[1][1]+v_line, 
+                            aligned_box_copy[1][0]:aligned_box_copy[1][0]+(h_line // 2)]
+        # reflect the left half by the vertical axis
+        flipped_half = cv2.flip(left_half, 1)
+        # get the right half from the orignal image
+        orig_half = img_bin[aligned_box_copy[1][1]:aligned_box_copy[1][1]+v_line, 
+                            aligned_box_copy[1][0]+(h_line // 2):aligned_box_copy[2][0]]
+    else:
+        # same for horizontal axis
+        pass
+
+    arr_flipped = flipped_half.flatten()
+    arr_orig_half = orig_half.flatten()    
+    # the halves must have the same size
+    assert arr_flipped.shape == arr_orig_half.shape, "Arrays have different shapes"
+    # Count the overlapping area of flipped image and the original image only for the halves
+    overlap_count = np.sum((arr_flipped == 255) & (arr_orig_half == 255))
+    # count white pixels of flipped half, prevent error from segment_binary algorithm
+    flipped_area = np.unique(flipped_half, return_counts=True)[1][1]
+    return round(overlap_count / flipped_area, 2)
