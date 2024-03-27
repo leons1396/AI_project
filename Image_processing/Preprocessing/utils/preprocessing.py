@@ -137,9 +137,8 @@ def segment_img_2(cropped_vegi_bgr):
     _, thresh = cv2.threshold(gray, 0, 255,cv2.THRESH_BINARY_INV +cv2.THRESH_OTSU)
     return thresh
 
-def segment_img_3(cropped_vegi_bgr):
-    #TODO check color map of the image
-    gray = cv2.cvtColor(cropped_vegi_bgr, cv2.COLOR_BGR2GRAY)
+def segment_img_3(cropped_vegi_rgb):
+    gray = cv2.cvtColor(cropped_vegi_rgb, cv2.COLOR_RGB2GRAY)
     # Apply Gaussian blur to reduce noise and smooth the image - but there is the chance
     # that the filter removes the small tribes from the potatos
     #blurred = cv2.GaussianBlur(gray, (3, 3), 0)
@@ -177,7 +176,10 @@ def sift(img_bgr):
     total = 0
     for key in kp:
         total += key.size
-    mean = total / len(kp)
+    if kp:
+        mean = total / len(kp)
+    else:
+        mean = 0
     return len(kp), mean
 
 
@@ -434,7 +436,7 @@ def align_edge_points(edge_points):
     # first index lower left and then clockwise
     
     # TODO: What to do if there are not in range ???
-    tol = 3
+    tol = 4
     # just check if the points are nearly horizontal and vertical aligned
     assert edge_points[0][0] in range(edge_points[1][0]-tol, edge_points[1][0]+tol), "P0 and P1 are not aligned"
     assert edge_points[0][1] in range(edge_points[3][1]-tol, edge_points[3][1]+tol), "P0 and P3 are not aligned"
@@ -475,7 +477,7 @@ def calc_symmetry(img, aligned_box, reflection_axis):
     """
     Calculate the symmetry feature of the vegi by taking the ratio of the overlap area of original 
     and reflected image to the area of the original image
-    :param img: The image of the vegi
+    :param img: The image of the vegi in RGB format
     :type img: np.array
     :param aligned_box: The aligned rotated box with the aligned edge points
     :type aligned_box: 2D np.array
@@ -504,6 +506,7 @@ def calc_symmetry(img, aligned_box, reflection_axis):
 
     if reflection_axis == "vertical":
         # array rows corresponds to img height
+        # crop image from top left point y to bottom left point y and from top left point x to image center x
         left_half = img_bin[aligned_box_copy[1][1]:aligned_box_copy[1][1]+v_line, 
                             aligned_box_copy[1][0]:aligned_box_copy[1][0]+(h_line // 2)]
         # reflect the left half by the vertical axis
@@ -513,7 +516,14 @@ def calc_symmetry(img, aligned_box, reflection_axis):
                             aligned_box_copy[1][0]+(h_line // 2):aligned_box_copy[2][0]]
     elif reflection_axis == "horizontal":
         # same for horizontal axis
-        pass
+        # crop top half of image
+        top_half = img_bin[aligned_box_copy[1][1]:aligned_box_copy[1][1]+(v_line // 2),
+                            aligned_box_copy[1][0]:aligned_box_copy[1][0]+h_line]
+        # reflect the top half by the horizontal axis
+        flipped_half = cv2.flip(top_half, 0)
+        # get the bottom half from the orignal image
+        orig_half = img_bin[aligned_box_copy[1][1]+(v_line // 2):aligned_box_copy[0][1],
+                            aligned_box_copy[1][0]:aligned_box_copy[1][0]+h_line]
 
     arr_flipped = flipped_half.flatten()
     arr_orig_half = orig_half.flatten()    
