@@ -1,5 +1,17 @@
+27.03.2024
+FIXME Image Segmentation and drawing Bounding box. I think the problem is because of different brightness values in the images
+- segment_img_3: wenn ich einen Filter (Gauß, median) anwende, habe ich das Problem bei Kartoffeln, dass die Sym Werte
+in Richtung 1 gehen: Vermutung: Die kleinen Kartoffeltriebe werden herausgefiltert
+
+
 22.03.2024
-TODO fine tune segment_img method. segment_img_3 funktioniert aktuell am besten. Paramter try and errorr...
+TODO fine tune segment_img method. segment_img_3 funktioniert aktuell am besten. Paramter try and errorr... Ersteinmal einfach so lassen...
+TODO add horizontal mirror axis to calc_symmetry
+TODO add sym feature to Df
+TODO do not draw the bounding box lines or do not use images with bounding box for symmetry feature etc
+- zeichne die bounding box um das binary img - ich denke das gibt die besseren Ergebnisse - kostenfunktion: pixel zählen von objekt binaray / fläche bounding geteilt durch contour area box
+-> Unterschied ist minimal, wenn ich bounding box um das segment_bin_3 img zeichne
+
 
 Final betrachtet, Das verhältnis der overlapping fläche muss ich zu der gespiegelten
     seite nehmen. Also zähle, wie viele Pixel sind gleich von gespiegelt zu orig rechte Hälfte 

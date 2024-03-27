@@ -138,9 +138,13 @@ def segment_img_2(cropped_vegi_bgr):
     return thresh
 
 def segment_img_3(cropped_vegi_bgr):
+    #TODO check color map of the image
     gray = cv2.cvtColor(cropped_vegi_bgr, cv2.COLOR_BGR2GRAY)
-     # Apply Gaussian blur to reduce noise and smooth the image
+    # Apply Gaussian blur to reduce noise and smooth the image - but there is the chance
+    # that the filter removes the small tribes from the potatos
     #blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+    # salt and pepper filter
+    #blurred = cv2.medianBlur(gray, 5)
 
     # Apply adaptive thresholding to obtain a binary image
     thresh = cv2.adaptiveThreshold(gray, 255, 
@@ -482,6 +486,7 @@ def calc_symmetry(img, aligned_box, reflection_axis):
     """
     # convert img to binary img
     img_bin = segment_img_3(img)
+
     # prevent manipulating the original box
     aligned_box_copy = aligned_box.copy()
     v_line = int(np.linalg.norm(aligned_box_copy[1] - aligned_box_copy[0]))
@@ -506,7 +511,7 @@ def calc_symmetry(img, aligned_box, reflection_axis):
         # get the right half from the orignal image
         orig_half = img_bin[aligned_box_copy[1][1]:aligned_box_copy[1][1]+v_line, 
                             aligned_box_copy[1][0]+(h_line // 2):aligned_box_copy[2][0]]
-    else:
+    elif reflection_axis == "horizontal":
         # same for horizontal axis
         pass
 
