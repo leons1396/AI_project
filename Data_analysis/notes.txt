@@ -1,0 +1,16 @@
+Bilder
+- Die Gemüsebilder im Ordner "Bilder" sind teilweise mit augementation bearbeitet - vervielfältig
+    # diese Bilder NICHT verwenden, weil die ML Modelle wieder dazu neigen zu overfitten.
+    # Bilder  mit augmentaiton sind einfach zu gleich
+    # für CNN Ok
+- Bilder in "Trainingsdaten" und "Testdaten" sind die zu verwendeten Bilder
+    # Trainingsdaten
+        * Hauptsächliche unsere Bilder, keine augementation
+        * nur aus verschiedenen Winkeln fotografiert
+    # Testdaten
+        * sind Hauptsächlich Bilder aus Ilias
+        * eignen sich sehr gut als Testdaten, weil wir die Bilder nicht gemacht haben - keine Voreingenommenheit
+        * deswegen NICHT mit dem Trainigsdatensatz vermischen
+
+
+TODO: Kartoffel_Trieb und Zwiebel sind nahezu überall gleich verteilt (siehe boxplot). Plot diese zwei direkt gegeneinander
