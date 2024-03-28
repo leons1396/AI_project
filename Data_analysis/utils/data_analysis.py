@@ -4,24 +4,23 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-def boxplot(data):
-    cols = list(data.columns)
-    while True:
-        fig, axes = plt.subplots(1, 2, figsize=(15, 5))
-        axes = axes.flatten()
-
-        for i, col in enumerate(cols):
-            if col == "Label":
-                continue
-            if i == 2:
-                break
-
-            sns.boxplot(data=data, x=col, y="Label", ax=axes[i])
-        _ = cols.pop(0)
-        _ = cols.pop(0)
-
-        plt.tight_layout()
-        plt.show()
-
-        if len(cols) == 0:
-            break
+def encoding_labels(df, col_name, encoding):
+    """
+    Encodes the labels
+    :param df: dataset
+    :type df: pd.DataFrame
+    :param col_name: column name to encode
+    :type: str
+    :param encoding: encoding values in ascending order
+    :type: list
+    :return: encoded dataset
+    :type: pd.DataFrame
+    """
+    df.loc[df[col_name] == 'Karotte', col_name] = encoding[0]  #0
+    df.loc[df[col_name] == 'Kartoffel', col_name] = encoding[1]  #1
+    df.loc[df[col_name] == 'Zwiebel', col_name] = encoding[2]  #2
+    df.loc[df[col_name] == 'Karotte_Trieb', col_name] = encoding[3]  #3
+    df.loc[df[col_name] == 'Kartoffel_Trieb', col_name] = encoding[4]  #4
+    df.loc[df[col_name] == 'Zwiebel_Trieb', col_name] = encoding[5]  #5
+    
+    return df
