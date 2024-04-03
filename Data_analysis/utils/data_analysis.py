@@ -22,5 +22,7 @@ def encoding_labels(df, col_name, encoding):
     df.loc[df[col_name] == 'Karotte_Trieb', col_name] = encoding[3]  #3
     df.loc[df[col_name] == 'Kartoffel_Trieb', col_name] = encoding[4]  #4
     df.loc[df[col_name] == 'Zwiebel_Trieb', col_name] = encoding[5]  #5
-    
     return df
+
+def get_df_with_two_labels(df, label_1, label_2):
+    return df.loc[(df["Classes"] == label_1) | (df["Classes"] == label_2)]

@@ -13,7 +13,10 @@ Bilder
         * deswegen NICHT mit dem Trainigsdatensatz vermischen
 
 
-TODO Kartoffel_Trieb und Zwiebel sind nahezu überall gleich verteilt (siehe boxplot). Plot diese zwei direkt gegeneinander
-TODO keypoints, mean keypoints entfernen. Die bieten keinen Mehrwert
+
 TODO evtl. weitere plots überlegen für die Datenanalyse
-TODO entfernen RGB ???
+
+
+
+- Entfernte Features: keypoints, mean keypoints, RGB, Height, Width
+TODO Trainiere Logistische Regression
